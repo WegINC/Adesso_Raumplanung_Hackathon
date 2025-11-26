@@ -1,4 +1,5 @@
 <Solution>
   <Folder Name="/Solution Items/" />
+  <Project Path="Roomy.Api.Tests/Roomy.Api.Tests.csproj" />
   <Project Path="Roomy.Api/Roomy.Api.csproj" />
 </Solution>
