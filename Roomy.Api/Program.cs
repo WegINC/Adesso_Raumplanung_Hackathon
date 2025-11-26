@@ -42,6 +42,7 @@ builder.Services.AddAuthorization();
 
 // Register services
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
 
 builder.Services
     .AddFastEndpoints()

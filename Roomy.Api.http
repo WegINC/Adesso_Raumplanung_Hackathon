@@ -59,3 +59,78 @@ GET {{baseUri}}/api/greeting/Developer
 GET {{baseUri}}/api/rooms
 
 ###
+
+### Reservation Endpoints
+
+### Check room availability
+POST {{baseUri}}/api/reservations/check-availability
+Content-Type: application/json
+
+{
+  "roomId": 1,
+  "startTime": "2025-12-01T09:00:00Z",
+  "endTime": "2025-12-01T11:00:00Z"
+}
+
+###
+
+### Create a reservation (requires authentication)
+POST {{baseUri}}/api/reservations
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "roomId": 1,
+  "title": "Team Meeting",
+  "description": "Weekly team sync",
+  "startTime": "2025-12-01T09:00:00Z",
+  "endTime": "2025-12-01T10:00:00Z"
+}
+
+###
+
+### Get all reservations
+GET {{baseUri}}/api/reservations
+
+###
+
+### Get reservations for a specific room
+GET {{baseUri}}/api/reservations?roomId=1
+
+###
+
+### Get reservations for a date range
+GET {{baseUri}}/api/reservations?startDate=2025-12-01&endDate=2025-12-31
+
+###
+
+### Get my reservations (requires authentication)
+GET {{baseUri}}/api/reservations/my
+Authorization: Bearer {token}
+
+###
+
+### Get a specific reservation
+GET {{baseUri}}/api/reservations/1
+
+###
+
+### Update/Reschedule a reservation (requires authentication)
+PUT {{baseUri}}/api/reservations/1
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "title": "Updated Team Meeting",
+  "description": "Updated description",
+  "startTime": "2025-12-01T10:00:00Z",
+  "endTime": "2025-12-01T11:00:00Z"
+}
+
+###
+
+### Cancel a reservation (requires authentication)
+DELETE {{baseUri}}/api/reservations/1
+Authorization: Bearer {token}
+
+###

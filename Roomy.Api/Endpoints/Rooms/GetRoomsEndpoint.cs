@@ -16,7 +16,7 @@ public class GetRoomsEndpoint : EndpointWithoutRequest<GetRoomsResponse>
     public override void Configure()
     {
         Get("/api/rooms");
-        AllowAnonymous();
+        // Require authentication - users need to be logged in to browse rooms
     }
 
     public override async Task HandleAsync(CancellationToken ct)
@@ -28,7 +28,6 @@ public class GetRoomsEndpoint : EndpointWithoutRequest<GetRoomsResponse>
                 Name = r.Name,
                 Description = r.Description,
                 Capacity = r.Capacity,
-                IsAvailable = r.IsAvailable,
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt
             })

@@ -79,36 +79,31 @@ public static class DbInitializer
                 {
                     Name = "Conference Room A",
                     Description = "Large conference room with video conferencing equipment",
-                    Capacity = 20,
-                    IsAvailable = true
+                    Capacity = 20
                 },
                 new Room
                 {
                     Name = "Meeting Room 1",
                     Description = "Small meeting room for team discussions",
-                    Capacity = 6,
-                    IsAvailable = true
+                    Capacity = 6
                 },
                 new Room
                 {
                     Name = "Board Room",
                     Description = "Executive board room with premium amenities",
-                    Capacity = 12,
-                    IsAvailable = true
+                    Capacity = 12
                 },
                 new Room
                 {
                     Name = "Training Room",
                     Description = "Large room equipped for training sessions",
-                    Capacity = 30,
-                    IsAvailable = false
+                    Capacity = 30
                 },
                 new Room
                 {
                     Name = "Huddle Space",
                     Description = "Quick meeting space for informal discussions",
-                    Capacity = 4,
-                    IsAvailable = true
+                    Capacity = 4
                 }
             };
 

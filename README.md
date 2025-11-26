@@ -1,6 +1,16 @@
 # Roomy - Room Reservation System API
 
-A .NET 10 Web API for managing room reservations using FastEndpoints and Entity Framework Core with SQL Server.
+A .NET 10 Web API for complete room booking management using FastEndpoints and Entity Framework Core with SQL Server.
+
+## ?? Features
+
+- ? **User Authentication** - JWT-based authentication with role-based access
+- ? **Room Management** - Browse available rooms with capacity information
+- ? **Reservation System** - Create, view, update, and cancel room bookings
+- ? **Conflict Detection** - Automatic scheduling conflict prevention
+- ? **Availability Checking** - Real-time room availability verification
+- ? **Permission Management** - Users manage their bookings, admins manage all
+- ? **Interactive API Docs** - Full Swagger/OpenAPI documentation
 
 ## Technologies
 
@@ -24,22 +34,15 @@ Roomy.Api/
 ??? Entities/
 ?   ??? Room.cs                    # Room entity model
 ?   ??? User.cs                    # User entity model
+?   ??? Reservation.cs             # Reservation entity model
 ??? Endpoints/
 ?   ??? Auth/                      # Authentication endpoints
-?   ?   ??? LoginEndpoint.cs
-?   ?   ??? Login.Models.cs
-?   ?   ??? RegisterEndpoint.cs
-?   ?   ??? Register.Models.cs
-?   ?   ??? GetCurrentUserEndpoint.cs
 ?   ??? Greeting/                  # Sample greeting endpoint
-?   ?   ??? GreetingEndpoint.cs
-?   ?   ??? GreetingRequest.cs
-?   ?   ??? GreetingResponse.cs
-?   ??? Rooms/                     # Room CRUD endpoints
-?       ??? GetRoomsEndpoint.cs
-?       ??? GetRoomsEndpoint.Models.cs
+?   ??? Rooms/                     # Room endpoints
+?   ??? Reservations/              # Reservation endpoints
 ??? Services/
 ?   ??? TokenService.cs            # JWT token generation
+?   ??? ReservationService.cs      # Conflict detection & availability
 ??? Migrations/                    # EF Core database migrations
 ```
 
@@ -90,59 +93,69 @@ The Swagger UI provides:
 2. **Copy the token** from the response
 3. **Click "Authorize"** button at the top of Swagger UI
 4. **Enter**: `Bearer {your-token}` (include "Bearer " prefix)
-5. **Test protected endpoints** like `/api/auth/me`
+5. **Test protected endpoints** like creating reservations
 
 ## API Endpoints
 
 ### Authentication
 
-#### Register
 - **POST** `/api/auth/register` - Register a new user
-  ```json
-  {
-    "email": "user@example.com",
-    "password": "Password123!",
-    "firstName": "John",
-    "lastName": "Doe"
-  }
-  ```
-
-#### Login
 - **POST** `/api/auth/login` - Login and receive JWT token
-  ```json
-  {
-    "email": "user@example.com",
-    "password": "Password123!"
-  }
-  ```
-  
-  Response:
-  ```json
-  {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "user": {
-      "id": 1,
-      "email": "user@example.com",
-      "firstName": "John",
-      "lastName": "Doe",
-      "role": "User"
-    }
-  }
-  ```
-
-#### Get Current User
-- **GET** `/api/auth/me` - Get current authenticated user
-  - Requires: `Authorization: Bearer {token}` header
-
-### Greeting (Sample)
-- **GET** `/api/greeting/{name}` - Returns a personalized greeting message
+- **GET** `/api/auth/me` ?? - Get current authenticated user
 
 ### Rooms
+
 - **GET** `/api/rooms` - Get all rooms
 
-## Seeded Users
+### Reservations
 
-The application seeds the following users on first run:
+- **POST** `/api/reservations/check-availability` - Check if room is available
+- **POST** `/api/reservations` ?? - Create a new reservation
+- **GET** `/api/reservations` - Get all reservations (with optional filters)
+- **GET** `/api/reservations/my` ?? - Get your reservations
+- **GET** `/api/reservations/{id}` - Get specific reservation
+- **PUT** `/api/reservations/{id}` ?? - Update/reschedule reservation
+- **DELETE** `/api/reservations/{id}` ?? - Cancel reservation
+
+?? = Requires authentication
+
+## Quick Start Example
+
+### 1. Check if a room is available
+```bash
+POST /api/reservations/check-availability
+{
+  "roomId": 1,
+  "startTime": "2024-12-01T09:00:00Z",
+  "endTime": "2024-12-01T10:00:00Z"
+}
+```
+
+### 2. Login
+```bash
+POST /api/auth/login
+{
+  "email": "john.doe@roomy.com",
+  "password": "User123!"
+}
+```
+
+### 3. Create Reservation
+```bash
+POST /api/reservations
+Authorization: Bearer {token}
+{
+  "roomId": 1,
+  "title": "Team Meeting",
+  "description": "Weekly team sync",
+  "startTime": "2024-12-01T09:00:00Z",
+  "endTime": "2024-12-01T10:00:00Z"
+}
+```
+
+## Seeded Data
+
+### Users
 
 | Email | Password | Role | Name |
 |-------|----------|------|------|
@@ -152,33 +165,71 @@ The application seeds the following users on first run:
 | bob.wilson@roomy.com | User123! | User | Bob Wilson |
 | alice.brown@roomy.com | User123! | User | Alice Brown |
 
+### Rooms
+
+- Conference Room A (Capacity: 20)
+- Meeting Room 1 (Capacity: 6)
+- Board Room (Capacity: 12)
+- Training Room (Capacity: 30)
+- Huddle Space (Capacity: 4)
+
 ## Entities
 
 ### User Entity
 
 | Property | Type | Description |
 |----------|------|-------------|
-| Id | int | Primary key (auto-increment) |
-| Email | string | User email (unique, required, max 256 chars) |
+| Id | int | Primary key |
+| Email | string | Unique user email |
 | PasswordHash | string | BCrypt hashed password |
-| FirstName | string | First name (required, max 100 chars) |
-| LastName | string | Last name (required, max 100 chars) |
-| Role | UserRole | User role (User or Administrator) |
-| IsActive | bool | Account status (default: true) |
-| CreatedAt | DateTime | Creation timestamp (UTC) |
-| LastLoginAt | DateTime? | Last login timestamp (UTC) |
+| FirstName | string | First name |
+| LastName | string | Last name |
+| Role | UserRole | User or Administrator |
+| IsActive | bool | Account status |
+| CreatedAt | DateTime | Creation timestamp |
+| LastLoginAt | DateTime? | Last login timestamp |
 
 ### Room Entity
 
 | Property | Type | Description |
 |----------|------|-------------|
-| Id | int | Primary key (auto-increment) |
-| Name | string | Room name (required, max 100 chars) |
-| Description | string? | Optional room description (max 500 chars) |
-| Capacity | int | Maximum number of people |
-| IsAvailable | bool | Availability status (default: true) |
-| CreatedAt | DateTime | Creation timestamp (UTC) |
-| UpdatedAt | DateTime? | Last update timestamp (UTC) |
+| Id | int | Primary key |
+| Name | string | Room name |
+| Description | string? | Optional description |
+| Capacity | int | Maximum occupancy |
+| CreatedAt | DateTime | Creation timestamp |
+| UpdatedAt | DateTime? | Last update timestamp |
+
+### Reservation Entity
+
+| Property | Type | Description |
+|----------|------|-------------|
+| Id | int | Primary key |
+| RoomId | int | Foreign key to Room |
+| UserId | int | Foreign key to User |
+| Title | string | Reservation title |
+| Description | string? | Optional description |
+| StartTime | DateTime | Reservation start (UTC) |
+| EndTime | DateTime | Reservation end (UTC) |
+| Status | ReservationStatus | Confirmed or Cancelled |
+| CreatedAt | DateTime | Creation timestamp |
+| UpdatedAt | DateTime? | Last update timestamp |
+
+## Conflict Detection
+
+The system automatically prevents double-booking:
+
+```
+Two reservations conflict if:
+StartTime1 < EndTime2 AND EndTime1 > StartTime2
+```
+
+**Example Conflicts:**
+- ? 09:00-10:00 and 10:00-11:00 (Adjacent - NO conflict)
+- ? 09:00-11:00 and 10:00-12:00 (Overlap - CONFLICT)
+- ? 09:00-12:00 and 10:00-11:00 (Contains - CONFLICT)
+
+See `RESERVATIONS_GUIDE.md` for detailed conflict scenarios.
 
 ## Authentication
 
@@ -191,6 +242,19 @@ This API uses **JWT (JSON Web Token)** authentication. To access protected endpo
    ```
 
 The token expires after 60 minutes (configurable in `appsettings.json`).
+
+## Permissions
+
+### Users Can:
+- ? Create their own reservations
+- ? View all reservations
+- ? Update their own reservations
+- ? Cancel their own reservations
+
+### Administrators Can:
+- ? All user permissions
+- ? Update any reservation
+- ? Cancel any reservation
 
 ## Database Migrations
 
@@ -224,61 +288,45 @@ JWT settings can be configured in `appsettings.json`:
 
 ?? **Important**: Change the JWT secret in production!
 
-## Next Steps
-
-To extend this API, you can:
-
-1. **Add more Room CRUD endpoints**:
-   - POST `/api/rooms` - Create a new room (Admin only)
-   - GET `/api/rooms/{id}` - Get a specific room
-   - PUT `/api/rooms/{id}` - Update a room (Admin only)
-   - DELETE `/api/rooms/{id}` - Delete a room (Admin only)
-
-2. **Add Reservation entity** for booking rooms with:
-   - User association
-   - Time slot management
-   - Room availability checks
-
-3. **Add role-based authorization** using FastEndpoints policies
-
-4. **Add validation** using FluentValidation (built into FastEndpoints)
-
-5. **Add email verification** for new user registrations
-
-6. **Add password reset** functionality
-
 ## Testing the API
 
-### Option 1: Swagger UI (Recommended)
+### Option 1: Swagger UI (Recommended ?)
 Navigate to `https://localhost:5001/swagger` for interactive API testing.
 
 ### Option 2: HTTP File
 Use the included `Roomy.Api.http` file with Visual Studio or VS Code REST Client extension.
 
-### Option 3: cURL
+### Option 3: cURL or Postman
+See examples in `RESERVATIONS_GUIDE.md`
 
-#### Register
-```bash
-curl -X POST https://localhost:5001/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"Test123!","firstName":"Test","lastName":"User"}'
-```
+## Documentation
 
-#### Login
-```bash
-curl -X POST https://localhost:5001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@roomy.com","password":"Admin123!"}'
-```
+- ?? **README.md** (this file) - Project overview
+- ?? **RESERVATIONS_GUIDE.md** - Complete reservation system guide
+- ?? **AUTHENTICATION.md** - Authentication implementation details
+- ?? **SWAGGER_GUIDE.md** - Swagger UI usage guide
 
-#### Get Current User (with token)
-```bash
-curl -X GET https://localhost:5001/api/auth/me \
-  -H "Authorization: Bearer {your-token}"
-```
+## Next Steps / Future Enhancements
 
-## FastEndpoints Resources
+Consider adding:
+
+1. **Recurring Reservations** - Daily/weekly/monthly bookings
+2. **Approval Workflow** - Require admin approval for reservations
+3. **Email Notifications** - Reminders and confirmations
+4. **Room Features** - Equipment, amenities, photos
+5. **Calendar Integration** - ICS export, Outlook/Google sync
+6. **Reporting** - Utilization statistics and analytics
+7. **Waitlist** - Queue for fully booked time slots
+8. **Room CRUD for Admins** - Add/edit/delete rooms
+
+## Resources
 
 - [FastEndpoints Documentation](https://fast-endpoints.com/)
 - [FastEndpoints GitHub](https://github.com/FastEndpoints/FastEndpoints)
 - [FastEndpoints Swagger](https://fast-endpoints.com/docs/swagger-support)
+- [Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/)
+- [JWT Authentication](https://jwt.io/)
+
+---
+
+**Built with ?? using .NET 10 and FastEndpoints**

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Roomy.Api.Data;
 
@@ -11,9 +12,11 @@ using Roomy.Api.Data;
 namespace Roomy.Api.Migrations
 {
     [DbContext(typeof(RoomyDbContext))]
-    partial class RoomyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251126164013_AddReservationSystem")]
+    partial class AddReservationSystem
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -1,8 +1,8 @@
 ### Authentication Endpoints
-@token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJhZG1pbkByb29teS5jb20iLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9naXZlbm5hbWUiOiJBZG1pbiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL3N1cm5hbWUiOiJVc2VyIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiQWRtaW5pc3RyYXRvciIsImV4cCI6MTc2NDE3Nzg1NiwiaXNzIjoiUm9vbXlBcGkiLCJhdWQiOiJSb29teUNsaWVudCJ9.5siHnynhhspp7ihnNsKT2PhU4puHyTztupL99frthEU
+@token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjEiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJhZG1pbkByb29teny5LmlzIl19.4jQw7H7W9sQv8eV8IDT49PdKnt10HC2Go7tQ6JJ2DdI
 @baseUri=https://localhost:7235
 
-### Register a new user
+### Register a new user (Public)
 POST {{baseUri}}/api/auth/register
 Content-Type: application/json
 
@@ -15,7 +15,8 @@ Content-Type: application/json
 
 ###
 
-### Login with admin account
+### Login with admin account (Public)
+# Copy the token from the response and update the @token variable above
 POST {{baseUri}}/api/auth/login
 Content-Type: application/json
 
@@ -26,7 +27,7 @@ Content-Type: application/json
 
 ###
 
-### Login with regular user
+### Login with regular user (Public)
 POST {{baseUri}}/api/auth/login
 Content-Type: application/json
 
@@ -37,8 +38,7 @@ Content-Type: application/json
 
 ###
 
-### Get current user (requires authentication)
-# Replace {token} with the token received from login
+### Get current user (Protected - requires authentication)
 GET {{baseUri}}/api/auth/me
 Authorization: Bearer {{token}}
 
@@ -46,14 +46,128 @@ Authorization: Bearer {{token}}
 
 ### Greeting Endpoints
 
-### Greeting with name parameter
+### Greeting with name parameter (Protected - requires authentication)
 GET {{baseUri}}/api/greeting/Developer
+Authorization: Bearer {{token}}
 
 ###
 
 ### Room Endpoints
 
-### Get all rooms
+### Get all rooms (Protected - requires authentication)
 GET {{baseUri}}/api/rooms
+Authorization: Bearer {{token}}
+
+###
+
+### Get room by ID (Protected - requires authentication)
+GET {{baseUri}}/api/rooms/1
+Authorization: Bearer {{token}}
+
+###
+
+### Create a new room (Protected - requires Administrator role)
+POST {{baseUri}}/api/rooms
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Innovation Lab",
+  "description": "Creative space for brainstorming and innovation",
+  "capacity": 15
+}
+
+###
+
+### Update a room (Protected - requires Administrator role)
+PUT {{baseUri}}/api/rooms/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Conference Room A - Updated",
+  "description": "Updated large conference room with enhanced video conferencing equipment",
+  "capacity": 25
+}
+
+###
+
+### Delete a room (Protected - requires Administrator role)
+# Note: Cannot delete rooms with existing confirmed reservations
+DELETE {{baseUri}}/api/rooms/6
+Authorization: Bearer {{token}}
+
+###
+
+### Reservation Endpoints
+
+### Check availability (Public - no authentication required)
+POST {{baseUri}}/api/reservations/check-availability
+Content-Type: application/json
+
+{
+  "roomId": 1,
+  "startTime": "2025-01-15T09:00:00Z",
+  "endTime": "2025-01-15T10:00:00Z"
+}
+
+###
+
+### Get all reservations (Protected - requires authentication)
+GET {{baseUri}}/api/reservations
+Authorization: Bearer {{token}}
+
+###
+
+### Get all reservations with filters (Protected - requires authentication)
+GET {{baseUri}}/api/reservations?roomId=1&startDate=2025-01-01T00:00:00Z&endDate=2025-01-31T23:59:59Z
+Authorization: Bearer {{token}}
+
+###
+
+### Get reservation by ID (Protected - requires authentication)
+GET {{baseUri}}/api/reservations/1
+Authorization: Bearer {{token}}
+
+###
+
+### Get my reservations (Protected - requires authentication)
+GET {{baseUri}}/api/reservations/my
+Authorization: Bearer {{token}}
+
+###
+
+### Create a reservation (Protected - requires authentication)
+POST {{baseUri}}/api/reservations
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "roomId": 1,
+  "title": "Team Meeting",
+  "description": "Weekly team sync",
+  "startTime": "2025-01-15T14:00:00Z",
+  "endTime": "2025-01-15T15:00:00Z"
+}
+
+###
+
+### Update a reservation (Protected - requires authentication, owner or admin)
+PUT {{baseUri}}/api/reservations/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Updated Team Meeting",
+  "description": "Updated description",
+  "startTime": "2025-01-15T15:00:00Z",
+  "endTime": "2025-01-15T16:00:00Z"
+}
+
+###
+
+### Cancel/Delete a reservation (Protected - requires authentication, owner or admin)
+DELETE {{baseUri}}/api/reservations/1
+Authorization: Bearer {{token}}
 
 ###

@@ -7,6 +7,7 @@ public class GreetingEndpoint : Endpoint<GreetingRequest, GreetingResponse>
     public override void Configure()
     {
         Get("/api/greeting/{Name}");
+        // Require authentication
     }
 
     public override Task HandleAsync(GreetingRequest req, CancellationToken ct)

@@ -11,6 +11,7 @@ public class RoomyDbContext : DbContext
 
     public DbSet<Room> Rooms { get; set; }
     public DbSet<User> Users { get; set; }
+    public DbSet<Reservation> Reservations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,13 +31,14 @@ public class RoomyDbContext : DbContext
             entity.Property(e => e.Capacity)
                 .IsRequired();
             
-            entity.Property(e => e.IsAvailable)
-                .IsRequired()
-                .HasDefaultValue(true);
-            
             entity.Property(e => e.CreatedAt)
                 .IsRequired()
                 .HasDefaultValueSql("GETUTCDATE()");
+
+            entity.HasMany(e => e.Reservations)
+                .WithOne(e => e.Room)
+                .HasForeignKey(e => e.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<User>(entity =>
@@ -73,6 +75,40 @@ public class RoomyDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .IsRequired()
                 .HasDefaultValueSql("GETUTCDATE()");
+
+            entity.HasMany(e => e.Reservations)
+                .WithOne(e => e.User)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Reservation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.StartTime)
+                .IsRequired();
+
+            entity.Property(e => e.EndTime)
+                .IsRequired();
+
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasConversion<int>()
+                .HasDefaultValue(ReservationStatus.Confirmed);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()");
+
+            entity.HasIndex(e => new { e.RoomId, e.StartTime, e.EndTime });
         });
     }
 }
