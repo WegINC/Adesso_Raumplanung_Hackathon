@@ -40,6 +40,17 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// Add CORS - Allow everything
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 // Register services
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
@@ -63,6 +74,9 @@ var app = builder.Build();
 await DbInitializer.InitializeAsync(app.Services);
 
 // Configure the HTTP request pipeline.
+// Use CORS - must come before Authentication and Authorization
+app.UseCors();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
