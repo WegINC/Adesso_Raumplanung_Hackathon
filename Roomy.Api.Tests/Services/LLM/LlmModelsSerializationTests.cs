@@ -1,6 +1,7 @@
 using System.Text.Json;
 using FluentAssertions;
 using Roomy.Api.Services.LLM;
+using Xunit;
 
 namespace Roomy.Api.Tests.Services.LLM;
 

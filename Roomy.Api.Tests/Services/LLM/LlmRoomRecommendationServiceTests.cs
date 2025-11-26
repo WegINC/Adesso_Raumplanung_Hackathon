@@ -1,9 +1,10 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Roomy.Api.Entities;
 using Roomy.Api.Services.LLM;
 using System.Net;
 using System.Net.Http.Json;
-using Xunit;
 
 namespace Roomy.Api.Tests.Services.LLM;
 
@@ -13,12 +14,19 @@ namespace Roomy.Api.Tests.Services.LLM;
 /// </summary>
 public class LlmRoomRecommendationServiceTests
 {
-    [Fact(DisplayName = "GetRecommendedRoomIdAsync sollte null zurückgeben bei HTTP-Fehler")]
-    public async Task GetRecommendedRoomIdAsync_WithHttpError_ReturnsNull()
+    private readonly ILogger<LlmRoomRecommendationService> _logger;
+
+    public LlmRoomRecommendationServiceTests()
+    {
+        _logger = NullLogger<LlmRoomRecommendationService>.Instance;
+    }
+
+    [Fact(DisplayName = "GetRecommendedRoomAsync sollte (null, null) zurückgeben bei HTTP-Fehler")]
+    public async Task GetRecommendedRoomAsync_WithHttpError_ReturnsNullTuple()
     {
         // Setup: Mock HttpClient mit Fehler-Response
         var httpClient = new HttpClient(new MockHttpMessageHandler(HttpStatusCode.InternalServerError));
-        var service = new LlmRoomRecommendationService(httpClient);
+        var service = new LlmRoomRecommendationService(httpClient, _logger);
         
         var rooms = new List<Room>
         {
@@ -26,26 +34,27 @@ public class LlmRoomRecommendationServiceTests
         };
 
         // Execution: Service aufrufen
-        var result = await service.GetRecommendedRoomIdAsync(rooms, "test query", CancellationToken.None);
+        var (roomId, recommendation) = await service.GetRecommendedRoomAsync(rooms, "test query", CancellationToken.None);
 
         // Verification: Null bei Fehler
-        result.Should().BeNull();
+        roomId.Should().BeNull();
+        recommendation.Should().BeNull();
     }
 
-    [Fact(DisplayName = "GetRecommendedRoomIdAsync sollte null zurückgeben bei ungültiger LLM-Antwort")]
-    public async Task GetRecommendedRoomIdAsync_WithInvalidLlmResponse_ReturnsNull()
+    [Fact(DisplayName = "GetRecommendedRoomAsync sollte Raum finden wenn Name übereinstimmt")]
+    public async Task GetRecommendedRoomAsync_WithValidRoomName_ReturnsRoomIdAndRecommendation()
     {
-        // Setup: Mock HttpClient mit ungültiger Antwort
+        // Setup: Mock HttpClient mit gültiger Antwort
         var llmResponse = new LlmChatResponse
         {
             Choices = new List<LlmChoice>
             {
-                new() { Message = new LlmMessage { Content = "nicht eine nummer" } }
+                new() { Message = new LlmMessage { Content = "Test Room\nIch empfehle Test Room.\n**Ausstattung:** Gut ausgestattet." } }
             }
         };
         
         var httpClient = new HttpClient(new MockHttpMessageHandler(HttpStatusCode.OK, llmResponse));
-        var service = new LlmRoomRecommendationService(httpClient);
+        var service = new LlmRoomRecommendationService(httpClient, _logger);
         
         var rooms = new List<Room>
         {
@@ -53,26 +62,28 @@ public class LlmRoomRecommendationServiceTests
         };
 
         // Execution: Service aufrufen
-        var result = await service.GetRecommendedRoomIdAsync(rooms, "test", CancellationToken.None);
+        var (roomId, recommendation) = await service.GetRecommendedRoomAsync(rooms, "test", CancellationToken.None);
 
-        // Verification: Null bei ungültiger Antwort
-        result.Should().BeNull();
+        // Verification: Raum gefunden und Empfehlung zurückgegeben
+        roomId.Should().Be(1);
+        recommendation.Should().Contain("Test Room");
+        recommendation.Should().Contain("Ausstattung");
     }
 
-    [Fact(DisplayName = "GetRecommendedRoomIdAsync sollte null zurückgeben wenn Raum-ID nicht verfügbar ist")]
-    public async Task GetRecommendedRoomIdAsync_WithNonExistentRoomId_ReturnsNull()
+    [Fact(DisplayName = "GetRecommendedRoomAsync sollte null RoomId zurückgeben wenn Raumname nicht gefunden wird")]
+    public async Task GetRecommendedRoomAsync_WithNonExistentRoomName_ReturnsNullRoomId()
     {
         // Setup: LLM empfiehlt Raum, der nicht in der Liste ist
         var llmResponse = new LlmChatResponse
         {
             Choices = new List<LlmChoice>
             {
-                new() { Message = new LlmMessage { Content = "999" } } // Nicht existierender Raum
+                new() { Message = new LlmMessage { Content = "Nicht Existierender Raum\nEmpfehlung für nicht existierenden Raum" } }
             }
         };
         
         var httpClient = new HttpClient(new MockHttpMessageHandler(HttpStatusCode.OK, llmResponse));
-        var service = new LlmRoomRecommendationService(httpClient);
+        var service = new LlmRoomRecommendationService(httpClient, _logger);
         
         var rooms = new List<Room>
         {
@@ -80,10 +91,11 @@ public class LlmRoomRecommendationServiceTests
         };
 
         // Execution: Service aufrufen
-        var result = await service.GetRecommendedRoomIdAsync(rooms, "test", CancellationToken.None);
+        var (roomId, recommendation) = await service.GetRecommendedRoomAsync(rooms, "test", CancellationToken.None);
 
-        // Verification: Null weil Raum nicht verfügbar
-        result.Should().BeNull("weil die empfohlene Raum-ID nicht in der verfügbaren Liste ist");
+        // Verification: Null RoomId aber Empfehlung vorhanden
+        roomId.Should().BeNull("weil der empfohlene Raumname nicht in der verfügbaren Liste ist");
+        recommendation.Should().NotBeNull("weil die LLM-Empfehlung trotzdem zurückgegeben wird");
     }
 
     [Fact(DisplayName = "BuildRoomsInformation sollte strukturierte Rauminformationen erstellen")]
