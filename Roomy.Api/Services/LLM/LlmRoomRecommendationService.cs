@@ -30,7 +30,8 @@ public class LlmRoomRecommendationService
     /// Empfiehlt einen Raum basierend auf Benutzeranfrage und verfügbaren Räumen via LLM.
     /// Geschäftslogik: LLM analysiert natürlichsprachliche Anfrage und Raumeigenschaften.
     /// </summary>
-    public async Task<int?> GetRecommendedRoomIdAsync(List<Room> availableRooms, string userQuery, CancellationToken ct)
+    /// <returns>Tupel mit Raum-ID und vollständiger Empfehlung/Begründung vom LLM</returns>
+    public async Task<(int? roomId, string? recommendation)> GetRecommendedRoomAsync(List<Room> availableRooms, string userQuery, CancellationToken ct)
     {
         _logger.LogInformation("=== LLM Raumempfehlung gestartet ===");
         _logger.LogInformation("Benutzeranfrage: {UserQuery}", userQuery);
@@ -44,14 +45,23 @@ public class LlmRoomRecommendationService
             var systemPrompt = @"Du bist ein intelligenter Assistent für Raumbuchungen. 
 Deine Aufgabe ist es, basierend auf der Anfrage des Benutzers den am besten passenden Raum zu empfehlen.
 Analysiere die Anforderungen (Kapazität, Ausstattung, Typ) und wähle den optimalen Raum aus.
-Antworte mit dem Namen und der Ausstattung des empfohlenen Raums und sage uns, warum Du genau diesen Raum für optimal hälst.";
+
+WICHTIG: Deine Antwort muss folgendes Format haben:
+1. Erste Zeile: Nur der exakte Raumname (genau wie in der Liste angegeben)
+2. Danach: Eine ausführliche Empfehlung mit Ausstattung und Begründung
+
+Beispiel:
+Meeting Room A
+Ich empfehle den Meeting Room A.
+**Ausstattung:** [Beschreibe die Ausstattung]
+**Begründung:** [Erkläre warum dieser Raum optimal ist]";
 
             var userPrompt = $@"Verfügbare Räume für morgen:
 {roomsInfo}
 
 Benutzeranfrage: ""{userQuery}""
-Antworte mit dem Namen und der Ausstattung des empfohlenen Raums und sage uns, warum Du genau diesen Raum für optimal hälst";
-// Welcher Raum passt am besten? Antworte nur mit der Raum-ID (Zahl).";
+
+Welcher Raum passt am besten? Gib zuerst den exakten Raumnamen an, dann eine ausführliche Empfehlung mit Ausstattung und Begründung.";
 
             var request = new LlmChatRequest
             {
@@ -80,7 +90,7 @@ Antworte mit dem Namen und der Ausstattung des empfohlenen Raums und sage uns, w
                 var errorContent = await response.Content.ReadAsStringAsync(ct);
                 _logger.LogError("LLM API Fehler: StatusCode={StatusCode}, Error={ErrorContent}", 
                     response.StatusCode, errorContent);
-                return null;
+                return (null, null);
             }
 
             var responseContent = await response.Content.ReadAsStringAsync(ct);
@@ -91,45 +101,55 @@ Antworte mit dem Namen und der Ausstattung des empfohlenen Raums und sage uns, w
             if (llmResponse?.Choices == null || llmResponse.Choices.Count == 0)
             {
                 _logger.LogWarning("LLM Response enthält keine Choices");
-                return null;
+                return (null, null);
             }
 
             var llmRecommendation = llmResponse.Choices[0]?.Message?.Content?.Trim();
             _logger.LogInformation("LLM Empfehlung (roh): {LlmRecommendation}", llmRecommendation);
             
-            // Extrahiere Raum-ID aus LLM-Antwort
-            if (int.TryParse(llmRecommendation, out int roomId))
+            if (string.IsNullOrWhiteSpace(llmRecommendation))
             {
-                _logger.LogInformation("LLM hat Raum-ID empfohlen: {RoomId}", roomId);
-                
-                // Validiere, dass die ID in der verfügbaren Liste ist
-                if (availableRooms.Any(r => r.Id == roomId))
-                {
-                    var recommendedRoom = availableRooms.First(r => r.Id == roomId);
-                    _logger.LogInformation("✓ Raum-ID {RoomId} ist verfügbar: {RoomName}", 
-                        roomId, recommendedRoom.Name);
-                    _logger.LogInformation("=== LLM Empfehlung erfolgreich ===");
-                    return roomId;
-                }
-                else
-                {
-                    _logger.LogWarning("✗ Raum-ID {RoomId} ist nicht in der verfügbaren Liste", roomId);
-                }
+                _logger.LogWarning("LLM Empfehlung ist leer");
+                return (null, null);
+            }
+            
+            // Extrahiere Raumname aus erster Zeile
+            var lines = llmRecommendation.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            if (lines.Length == 0)
+            {
+                _logger.LogWarning("LLM Empfehlung hat keine Zeilen");
+                return (null, null);
+            }
+            
+            var recommendedRoomName = lines[0].Trim();
+            _logger.LogInformation("LLM hat Raum empfohlen: {RoomName}", recommendedRoomName);
+            
+            // Finde Raum anhand des Namens
+            var recommendedRoom = availableRooms.FirstOrDefault(r => 
+                r.Name.Equals(recommendedRoomName, StringComparison.OrdinalIgnoreCase));
+            
+            if (recommendedRoom != null)
+            {
+                _logger.LogInformation("✓ Raum '{RoomName}' (ID: {RoomId}) gefunden", 
+                    recommendedRoom.Name, recommendedRoom.Id);
+                _logger.LogInformation("=== LLM Empfehlung erfolgreich ===");
+                return (recommendedRoom.Id, llmRecommendation);
             }
             else
             {
-                _logger.LogWarning("Konnte Raum-ID nicht aus LLM-Antwort parsen: {LlmRecommendation}", 
-                    llmRecommendation);
+                _logger.LogWarning("✗ Raum '{RoomName}' nicht in verfügbarer Liste gefunden", recommendedRoomName);
+                _logger.LogInformation("Verfügbare Räume: {RoomNames}", 
+                    string.Join(", ", availableRooms.Select(r => r.Name)));
             }
 
             _logger.LogInformation("=== LLM Empfehlung fehlgeschlagen, Fallback wird verwendet ===");
-            return null;
+            return (null, llmRecommendation); // Gib Empfehlung zurück auch wenn Raum nicht gefunden
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Fehler beim LLM Service Call: {ErrorMessage}", ex.Message);
             _logger.LogInformation("=== LLM Empfehlung mit Exception beendet, Fallback wird verwendet ===");
-            return null;
+            return (null, null);
         }
     }
 

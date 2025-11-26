@@ -35,5 +35,10 @@ public class RecommendedRoomResponse
     /// Beschreibung des empfohlenen Raums (optional).
     /// </summary>
     public string? Description { get; set; }
+    
+    /// <summary>
+    /// Ausführliche Empfehlung vom LLM mit Ausstattung und Begründung (optional).
+    /// </summary>
+    public string? LlmRecommendation { get; set; }
 }
 

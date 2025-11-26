@@ -61,12 +61,15 @@ public class RecommendedRoomEndpoint : Endpoint<RecommendedRoomRequest, Recommen
 
         // Empfehlungslogik: Zuerst LLM-basierte Empfehlung versuchen
         Room? recommendedRoom = null;
-        var llmRecommendedRoomId = await _llmService.GetRecommendedRoomIdAsync(availableRooms, req.Criteria, ct);
+        string? llmRecommendation = null;
         
-        if (llmRecommendedRoomId.HasValue)
+        var (llmRoomId, llmResponse) = await _llmService.GetRecommendedRoomAsync(availableRooms, req.Criteria, ct);
+        
+        if (llmRoomId.HasValue)
         {
             // LLM hat eine Empfehlung gegeben
-            recommendedRoom = availableRooms.FirstOrDefault(r => r.Id == llmRecommendedRoomId.Value);
+            recommendedRoom = availableRooms.FirstOrDefault(r => r.Id == llmRoomId.Value);
+            llmRecommendation = llmResponse;
         }
 
         // Fallback: Regelbasierte Empfehlung wenn LLM fehlschlägt
@@ -80,7 +83,8 @@ public class RecommendedRoomEndpoint : Endpoint<RecommendedRoomRequest, Recommen
             RoomName = recommendedRoom.Name,
             RoomId = recommendedRoom.Id,
             Capacity = recommendedRoom.Capacity,
-            Description = recommendedRoom.Description
+            Description = recommendedRoom.Description,
+            LlmRecommendation = llmRecommendation
         };
     }
 
