@@ -1,20 +1,24 @@
 using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
 using Roomy.Api.Data;
+using Roomy.Api.Entities;
+using Roomy.Api.Services.LLM;
 
 namespace Roomy.Api.Endpoints.Rooms;
 
 /// <summary>
 /// Endpoint für die Empfehlung eines verfügbaren Raums für morgen basierend auf Suchkriterien.
-/// Domain: Room-Aggregat mit zeitbasierter Verfügbarkeitsprüfung und Empfehlungslogik.
+/// Domain: Room-Aggregat mit zeitbasierter Verfügbarkeitsprüfung und LLM-gestützter Empfehlungslogik.
 /// </summary>
 public class RecommendedRoomEndpoint : Endpoint<RecommendedRoomRequest, RecommendedRoomResponse>
 {
     private readonly RoomyDbContext _dbContext;
+    private readonly LlmRoomRecommendationService _llmService;
 
-    public RecommendedRoomEndpoint(RoomyDbContext dbContext)
+    public RecommendedRoomEndpoint(RoomyDbContext dbContext, LlmRoomRecommendationService llmService)
     {
         _dbContext = dbContext;
+        _llmService = llmService;
     }
 
     public override void Configure()
@@ -32,20 +36,44 @@ public class RecommendedRoomEndpoint : Endpoint<RecommendedRoomRequest, Recommen
     public override async Task HandleAsync(RecommendedRoomRequest req, CancellationToken ct)
     {
         // Domain-Logik: Verfügbare Räume für morgen abfragen
-        // TODO: Implementiere zeitbasierte Verfügbarkeitsprüfung für morgen (DateTime.UtcNow.Date.AddDays(1))
+        var tomorrow = DateTime.UtcNow.Date.AddDays(1);
+        var tomorrowStart = tomorrow;
+        var tomorrowEnd = tomorrow.AddDays(1);
         
-        // Geschäftsregel: Nur verfügbare Räume berücksichtigen
-        var availableRooms = await _dbContext.Rooms
-            .Where(r => r.IsAvailable)
+        // Geschäftsregel: Räume laden mit ihren Reservierungen für morgen
+        var allRooms = await _dbContext.Rooms
+            .Include(r => r.Reservations)
             .ToListAsync(ct);
+
+        // Geschäftsregel: Filtere Räume, die für morgen KEINE bestätigte Reservierung haben
+        // Ein Raum ist verfügbar, wenn er keine Reservierung hat, die sich mit "morgen" überschneidet
+        var availableRooms = allRooms
+            .Where(r => !r.Reservations.Any(res => 
+                res.Status == ReservationStatus.Confirmed &&
+                res.StartTime < tomorrowEnd &&
+                res.EndTime > tomorrowStart))
+            .ToList();
 
         if (!availableRooms.Any())
         {
             ThrowError("Keine verfügbaren Räume für morgen gefunden", 404);
         }
 
-        // Empfehlungslogik: Raum basierend auf Kriterium auswählen
-        var recommendedRoom = SelectRecommendedRoom(availableRooms, req.Criteria);
+        // Empfehlungslogik: Zuerst LLM-basierte Empfehlung versuchen
+        Room? recommendedRoom = null;
+        var llmRecommendedRoomId = await _llmService.GetRecommendedRoomIdAsync(availableRooms, req.Criteria, ct);
+        
+        if (llmRecommendedRoomId.HasValue)
+        {
+            // LLM hat eine Empfehlung gegeben
+            recommendedRoom = availableRooms.FirstOrDefault(r => r.Id == llmRecommendedRoomId.Value);
+        }
+
+        // Fallback: Regelbasierte Empfehlung wenn LLM fehlschlägt
+        if (recommendedRoom == null)
+        {
+            recommendedRoom = SelectRecommendedRoom(availableRooms, req.Criteria);
+        }
 
         Response = new RecommendedRoomResponse
         {
@@ -64,7 +92,7 @@ public class RecommendedRoomEndpoint : Endpoint<RecommendedRoomRequest, Recommen
     /// "meeting": Raum mit "meeting" oder "konferenz" im Namen/Beschreibung.
     /// Default: Erster verfügbarer Raum.
     /// </summary>
-    private Entities.Room SelectRecommendedRoom(List<Entities.Room> availableRooms, string criteria)
+    private Room SelectRecommendedRoom(List<Room> availableRooms, string criteria)
     {
         var lowerCriteria = criteria.ToLowerInvariant().Trim();
 

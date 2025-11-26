@@ -55,6 +55,10 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 
+// Register HttpClient for LLM Service
+builder.Services.AddHttpClient<Roomy.Api.Services.LLM.LlmRoomRecommendationService>();
+builder.Services.AddScoped<Roomy.Api.Services.LLM.LlmRoomRecommendationService>();
+
 builder.Services
     .AddFastEndpoints()
     .SwaggerDocument(o =>
