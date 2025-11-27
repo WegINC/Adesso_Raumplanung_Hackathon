@@ -35,7 +35,6 @@ public class GetRoomsEndpointTests : IDisposable
             Name = "Meeting Room A",
             Description = "Verfügbarer Raum",
             Capacity = 10,
-            IsAvailable = true,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -44,7 +43,6 @@ public class GetRoomsEndpointTests : IDisposable
             Name = "Meeting Room B",
             Description = "Nicht verfügbarer Raum",
             Capacity = 5,
-            IsAvailable = false,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -58,15 +56,13 @@ public class GetRoomsEndpointTests : IDisposable
         var response = _endpoint.Response;
         response.Should().NotBeNull();
         response.Rooms.Should().HaveCount(2);
-        
+
         // Die Räume enthalten die Verfügbarkeitsinformation
         var availableRoomDto = response.Rooms.FirstOrDefault(r => r.Name == "Meeting Room A");
         availableRoomDto.Should().NotBeNull();
-        availableRoomDto.IsAvailable.Should().BeTrue();
 
         var unavailableRoomDto = response.Rooms.FirstOrDefault(r => r.Name == "Meeting Room B");
         unavailableRoomDto.Should().NotBeNull();
-        unavailableRoomDto.IsAvailable.Should().BeFalse();
     }
 
     [Fact(DisplayName = "HandleAsync sollte eine leere Liste zurückgeben, wenn keine Räume vorhanden sind")]
@@ -89,10 +85,10 @@ public class GetRoomsEndpointTests : IDisposable
         // Setup: Mehrere Räume mit unterschiedlicher Verfügbarkeit
         var rooms = new[]
         {
-            new Room { Name = "Room 1", Capacity = 5, IsAvailable = true, CreatedAt = DateTime.UtcNow },
-            new Room { Name = "Room 2", Capacity = 10, IsAvailable = false, CreatedAt = DateTime.UtcNow },
-            new Room { Name = "Room 3", Capacity = 15, IsAvailable = true, CreatedAt = DateTime.UtcNow },
-            new Room { Name = "Room 4", Capacity = 20, IsAvailable = false, CreatedAt = DateTime.UtcNow }
+            new Room { Name = "Room 1", Capacity = 5, CreatedAt = DateTime.UtcNow },
+            new Room { Name = "Room 2", Capacity = 10, CreatedAt = DateTime.UtcNow },
+            new Room { Name = "Room 3", Capacity = 15, CreatedAt = DateTime.UtcNow },
+            new Room { Name = "Room 4", Capacity = 20, CreatedAt = DateTime.UtcNow }
         };
 
         await _dbContext.Rooms.AddRangeAsync(rooms);
@@ -105,10 +101,6 @@ public class GetRoomsEndpointTests : IDisposable
         var response = _endpoint.Response;
         response.Should().NotBeNull();
         response.Rooms.Should().HaveCount(4);
-        
-        // Überprüfen, dass verfügbare und nicht verfügbare Räume vorhanden sind
-        response.Rooms.Count(r => r.IsAvailable).Should().Be(2);
-        response.Rooms.Count(r => !r.IsAvailable).Should().Be(2);
     }
 
     [Fact(DisplayName = "HandleAsync sollte korrekt gemappte RoomDtos zurückgeben")]
@@ -117,13 +109,12 @@ public class GetRoomsEndpointTests : IDisposable
         // Setup: Raum mit vollständigen Daten erstellen
         var createdAt = new DateTime(2025, 11, 26, 10, 0, 0, DateTimeKind.Utc);
         var updatedAt = new DateTime(2025, 11, 26, 12, 0, 0, DateTimeKind.Utc);
-        
+
         var room = new Room
         {
             Name = "Conference Room",
             Description = "Großer Konferenzraum mit Projektor",
             Capacity = 25,
-            IsAvailable = true,
             CreatedAt = createdAt,
             UpdatedAt = updatedAt
         };
@@ -144,7 +135,6 @@ public class GetRoomsEndpointTests : IDisposable
         roomDto.Name.Should().Be("Conference Room");
         roomDto.Description.Should().Be("Großer Konferenzraum mit Projektor");
         roomDto.Capacity.Should().Be(25);
-        roomDto.IsAvailable.Should().BeTrue();
         roomDto.CreatedAt.Should().Be(createdAt);
         roomDto.UpdatedAt.Should().Be(updatedAt);
     }
@@ -158,7 +148,6 @@ public class GetRoomsEndpointTests : IDisposable
             Name = "Simple Room",
             Description = null,
             Capacity = 8,
-            IsAvailable = true,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -181,9 +170,9 @@ public class GetRoomsEndpointTests : IDisposable
         // Setup: Nur verfügbare Räume erstellen
         var rooms = new[]
         {
-            new Room { Name = "Room Alpha", Capacity = 5, IsAvailable = true, CreatedAt = DateTime.UtcNow.AddDays(-3) },
-            new Room { Name = "Room Beta", Capacity = 10, IsAvailable = true, CreatedAt = DateTime.UtcNow.AddDays(-2) },
-            new Room { Name = "Room Gamma", Capacity = 15, IsAvailable = true, CreatedAt = DateTime.UtcNow.AddDays(-1) }
+            new Room { Name = "Room Alpha", Capacity = 5, CreatedAt = DateTime.UtcNow.AddDays(-3) },
+            new Room { Name = "Room Beta", Capacity = 10, CreatedAt = DateTime.UtcNow.AddDays(-2) },
+            new Room { Name = "Room Gamma", Capacity = 15, CreatedAt = DateTime.UtcNow.AddDays(-1) }
         };
 
         await _dbContext.Rooms.AddRangeAsync(rooms);
@@ -196,8 +185,7 @@ public class GetRoomsEndpointTests : IDisposable
         var response = _endpoint.Response;
         response.Should().NotBeNull();
         response.Rooms.Should().HaveCount(3);
-        response.Rooms.Should().OnlyContain(r => r.IsAvailable);
-        
+
         // Überprüfen, dass alle erwarteten Räume vorhanden sind
         response.Rooms.Should().Contain(r => r.Name == "Room Alpha");
         response.Rooms.Should().Contain(r => r.Name == "Room Beta");
@@ -212,7 +200,6 @@ public class GetRoomsEndpointTests : IDisposable
         {
             Name = "Test Room",
             Capacity = 10,
-            IsAvailable = true,
             CreatedAt = DateTime.UtcNow
         };
 
